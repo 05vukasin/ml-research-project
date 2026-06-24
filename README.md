@@ -369,3 +369,7 @@ infrastructure that support those units without blurring their boundaries.
 **Ground-truth accuracy.** Each dataset includes a label column in every stream message.
 Inference computes `is_correct = prediction == actual` per event and persists it. The dashboard
 gauge shows the true running accuracy.
+
+## License
+
+Released under the [MIT License](LICENSE).
