@@ -1,0 +1,17 @@
+FROM ml-ops-v1-ml-service:latest
+
+# Install Java for PMML export (sklearn2pmml requires JVM)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    default-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install the missing ML export libraries on top of what already exists
+RUN pip install --no-cache-dir \
+    skl2onnx==1.17.0 \
+    onnx==1.16.1 \
+    onnxruntime==1.20.1 \
+    sklearn2pmml==0.108.0
+
+WORKDIR /app
+
+CMD ["/bin/bash"]

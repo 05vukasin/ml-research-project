@@ -1,0 +1,155 @@
+# docker-compose.yml — MLOps full stack
+# Brings up: postgres, redis, inference, streamer, trainer, dashboard
+# Usage: cp .env.example .env && docker compose up --build
+# All config is read from .env (copy .env.example → .env before first run)
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - mlops
+
+  # ── Redis ─────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - mlops
+
+  # ── Inference (FastAPI, port 8000) ────────────────────────────────────────────
+  inference:
+    build: ./inference
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      MODELS_DIR: /models
+      DATA_DIR: /data
+      START_DATASET: ${START_DATASET}
+    volumes:
+      - ./models:/models:ro
+      - ./data:/data:ro
+    ports:
+      - "${INFERENCE_PORT}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - mlops
+
+  # ── Streamer (worker, no port) ────────────────────────────────────────────────
+  streamer:
+    build: ./streamer
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      DATA_DIR: /data
+      START_DATASET: ${START_DATASET}
+      START_INTERVAL_MS: ${START_INTERVAL_MS}
+    volumes:
+      - ./data:/data:ro
+      - ./models:/models:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      inference:
+        condition: service_started
+    networks:
+      - mlops
+
+  # ── Trainer (FastAPI, port 8001) ──────────────────────────────────────────────
+  trainer:
+    build: ./trainer
+    restart: unless-stopped
+    environment:
+      MODELS_DIR: /models
+      DATA_DIR: /data
+      INFERENCE_URL: ${INFERENCE_URL}
+      # psycopg3 DSN (trainer uses psycopg[binary] v3; inference uses psycopg2 — different drivers)
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - ./models:/models
+      - ./data:/data:ro
+    ports:
+      - "${TRAINER_PORT}:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      inference:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - mlops
+
+  # ── Dashboard (Next.js, port 3000) ────────────────────────────────────────────
+  dashboard:
+    build:
+      context: ./dashboard
+      args:
+        # NEXT_PUBLIC_* vars must be baked into the JS bundle at build time.
+        # They point at host-reachable ports so the browser can reach inference/trainer.
+        NEXT_PUBLIC_INFERENCE_URL: ${NEXT_PUBLIC_INFERENCE_URL}
+        NEXT_PUBLIC_TRAINER_URL: ${NEXT_PUBLIC_TRAINER_URL}
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_PORT}:3000"
+    depends_on:
+      inference:
+        condition: service_healthy
+      trainer:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - mlops
+
+# ── Named volumes ─────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+
+# ── Named network ─────────────────────────────────────────────────────────────
+networks:
+  mlops:
+    driver: bridge

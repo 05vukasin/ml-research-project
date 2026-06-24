@@ -1,0 +1,35 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+.npm/
+
+# --- Env / secrets ---
+.env
+.env.local
+!.env.example
+
+# --- Data: keep committed samples, ignore full datasets ---
+data/**/*.csv
+!data/**/sample.csv
+
+# --- Models: keep registry + committed artifacts (small). Ignore scratch. ---
+models/**/*.tmp
+models/**/_scratch/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/

@@ -1,0 +1,30 @@
+{
+  "name": "RotorMind v1",
+  "slug": "rotormind-v1",
+  "dataset": "iot",
+  "algo": "RandomForestClassifier",
+  "features": [
+    "air_temp",
+    "process_temp",
+    "rotational_speed",
+    "torque",
+    "tool_wear"
+  ],
+  "classes": {
+    "0": "OK",
+    "1": "Failure"
+  },
+  "metrics": {
+    "accuracy": 0.9258,
+    "precision": 0.8444,
+    "recall": 0.5033
+  },
+  "trained_at": "2026-06-23",
+  "formats": {
+    "joblib": "rotormind-v1.joblib",
+    "pickle": "rotormind-v1.pkl",
+    "onnx": "rotormind-v1.onnx",
+    "pmml": null
+  },
+  "scaler": "scaler.joblib"
+}

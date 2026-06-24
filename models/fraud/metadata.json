@@ -1,0 +1,33 @@
+{
+  "name": "FraudGuard v1",
+  "slug": "fraudguard-v1",
+  "dataset": "fraud",
+  "algo": "RandomForestClassifier",
+  "features": [
+    "v1",
+    "v2",
+    "v3",
+    "v4",
+    "v5",
+    "v6",
+    "amount",
+    "hour"
+  ],
+  "classes": {
+    "0": "Legit",
+    "1": "Fraud"
+  },
+  "metrics": {
+    "accuracy": 0.9342,
+    "precision": 0.975,
+    "recall": 0.3333
+  },
+  "trained_at": "2026-06-23",
+  "formats": {
+    "joblib": "fraudguard-v1.joblib",
+    "pickle": "fraudguard-v1.pkl",
+    "onnx": "fraudguard-v1.onnx",
+    "pmml": null
+  },
+  "scaler": "scaler.joblib"
+}
