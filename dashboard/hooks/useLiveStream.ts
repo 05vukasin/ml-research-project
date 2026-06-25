@@ -45,6 +45,7 @@ export function useLiveStream() {
     const pending = bufferRef.current.splice(0); // drain buffer
     if (pending.length === 0) return;
 
+    // Latest event (incl. the on-connect snapshot) seeds the running aggregates.
     const latest = pending[pending.length - 1];
     setAggregates({
       running_accuracy: latest.running_accuracy,
@@ -54,8 +55,12 @@ export function useLiveStream() {
       avg_latency: latest.avg_latency,
       dataset: latest.dataset,
     });
+    // Snapshot events only seed aggregates — they are not real predictions, so
+    // keep them out of the live feed list.
+    const feedEvents = pending.filter((e) => !e.snapshot);
+    if (feedEvents.length === 0) return;
     setEvents((prev) => {
-      const next = [...pending, ...prev].slice(0, MAX_EVENTS);
+      const next = [...feedEvents, ...prev].slice(0, MAX_EVENTS);
       return next;
     });
   }, []);

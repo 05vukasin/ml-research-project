@@ -10,6 +10,8 @@ export interface StreamEvent {
   probability: number;
   latency_ms: number;
   ts: string;
+  /** True for the on-connect snapshot event (seeds aggregates, not a real prediction). */
+  snapshot?: boolean;
   running_accuracy: number;
   total_processed: number;
   positive_count: number;

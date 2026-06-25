@@ -20,8 +20,15 @@ import type {
   TrainerStats,
 } from "./types";
 
+// On the server (RSC inside the dashboard container) the public localhost URL is
+// unreachable — inference lives at the Docker service name. Use the internal URL
+// server-side and the public (browser-reachable) URL in the browser.
 const BASE =
-  process.env.NEXT_PUBLIC_INFERENCE_URL ?? "http://localhost:8000";
+  typeof window === "undefined"
+    ? process.env.INFERENCE_INTERNAL_URL ??
+      process.env.NEXT_PUBLIC_INFERENCE_URL ??
+      "http://inference:8000"
+    : process.env.NEXT_PUBLIC_INFERENCE_URL ?? "http://localhost:8000";
 
 const TRAINER =
   process.env.NEXT_PUBLIC_TRAINER_URL ?? "http://localhost:8001";

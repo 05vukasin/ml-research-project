@@ -345,6 +345,27 @@ async def stream(request: Request) -> EventSourceResponse:
         async with _sse_lock:
             _sse_queues.append(q)
         try:
+            # Initial snapshot so a freshly (re)connected client can seed the gauge
+            # and KPI counts immediately instead of sitting at zero until the next
+            # live prediction. Marked snapshot=true so the client keeps it out of
+            # the live feed list.
+            active = model_store.active_dataset
+            agg = agg_store.snapshot(active)
+            yield {
+                "data": json.dumps(
+                    {
+                        "snapshot": True,
+                        "dataset": active,
+                        "prediction": None,
+                        "actual": None,
+                        "running_accuracy": agg["running_accuracy"],
+                        "total_processed": agg["total"],
+                        "positive_count": agg["positive_count"],
+                        "throughput": agg["throughput"],
+                        "avg_latency": agg["avg_latency"],
+                    }
+                )
+            }
             while True:
                 if await request.is_disconnected():
                     break

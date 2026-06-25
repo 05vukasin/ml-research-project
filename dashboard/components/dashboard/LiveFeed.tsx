@@ -70,7 +70,7 @@ function FeedRow({
         }
       }}
       className={cn(
-        "flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-xs bg-white cursor-pointer transition-shadow hover:shadow-sm",
+        "flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-xs bg-white cursor-pointer transition-shadow hover:shadow-sm min-w-0",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
         isPositive && "pulse-once"
       )}
@@ -83,7 +83,7 @@ function FeedRow({
       {/* Correct / incorrect — text + color, not color-only */}
       <span
         className={cn(
-          "shrink-0 w-5 text-center font-bold tabular-nums",
+          "shrink-0 w-4 text-center font-bold",
           isCorrect ? "text-green-600" : "text-red-500"
         )}
         aria-label={isCorrect ? "Correct" : "Incorrect"}
@@ -91,49 +91,29 @@ function FeedRow({
         {isCorrect ? "✓" : "✗"}
       </span>
 
-      {/* Prediction vs actual */}
-      <div className="flex items-center gap-1 font-medium min-w-0 shrink-0">
+      {/* Prediction → actual — primary content, ellipsizes instead of overflowing */}
+      <div className="flex-1 flex items-center gap-1.5 font-medium min-w-0">
         <span
-          className="tabular-nums"
-          style={{ color: event.prediction === 1 ? accent : "#64748b" }}
+          className="truncate"
+          style={{ color: isPositive ? accent : "#64748b" }}
         >
           {event.prediction === 1
             ? (datasetMeta?.positive_label ?? "Pos")
             : (datasetMeta?.models[0]?.classes?.["0"] ?? "Neg")}
         </span>
-        <span className="text-muted-foreground/60">→</span>
-        <span className="tabular-nums text-muted-foreground">
+        <span className="shrink-0 text-muted-foreground/50">→</span>
+        <span className="truncate text-muted-foreground">
           {event.actual === 1
             ? (datasetMeta?.positive_label ?? "Pos")
             : (datasetMeta?.models[0]?.classes?.["0"] ?? "Neg")}
         </span>
       </div>
 
-      {/* Probability */}
-      <div className="ml-auto flex items-center gap-3 text-muted-foreground shrink-0">
-        <span className="tabular-nums">
-          <span className="text-muted-foreground/70">p=</span>
-          {(event.probability * 100).toFixed(1)}
-          <span className="text-muted-foreground/70">%</span>
-        </span>
-        <span className="tabular-nums text-muted-foreground/70">
-          {event.latency_ms.toFixed(1)}
-          <span className="text-muted-foreground/50">ms</span>
-        </span>
-        <span
-          className={cn(
-            "shrink-0 w-16 text-right tabular-nums",
-            isPositive ? "font-semibold" : "text-muted-foreground/50"
-          )}
-          style={isPositive ? { color: accent } : {}}
-        >
-          {isPositive && (
-            <span className="text-[10px] font-medium uppercase tracking-wide">
-              {datasetMeta?.positive_label ?? "Alert"}
-            </span>
-          )}
-        </span>
-      </div>
+      {/* Probability — the one number worth seeing per row */}
+      <span className="shrink-0 tabular-nums text-muted-foreground">
+        {(event.probability * 100).toFixed(1)}
+        <span className="text-muted-foreground/60">%</span>
+      </span>
     </motion.li>
   );
 }
@@ -232,7 +212,7 @@ export function LiveFeed({ events }: LiveFeedProps) {
   const [selected, setSelected] = useState<StreamEvent | null>(null);
 
   return (
-    <Card className="flex flex-col shadow-sm h-[420px]">
+    <Card className="flex flex-col shadow-sm min-h-[420px] lg:min-h-0 lg:flex-1">
       <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
         <div>
           <CardTitle className="text-sm font-semibold text-foreground">
@@ -269,7 +249,7 @@ export function LiveFeed({ events }: LiveFeedProps) {
       )}
       <CardContent className="flex-1 overflow-hidden p-3 pt-0 min-h-0">
         <motion.ul
-          className="flex flex-col gap-1.5 overflow-y-auto h-full pr-1"
+          className="flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden h-full pr-1"
           aria-label="Live inference events"
           aria-live="polite"
           aria-atomic="false"

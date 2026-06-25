@@ -129,6 +129,10 @@ services:
         NEXT_PUBLIC_INFERENCE_URL: ${NEXT_PUBLIC_INFERENCE_URL}
         NEXT_PUBLIC_TRAINER_URL: ${NEXT_PUBLIC_TRAINER_URL}
     restart: unless-stopped
+    environment:
+      # Runtime (non-NEXT_PUBLIC) URL used by Server Components to reach inference
+      # over the Docker network. The browser still uses NEXT_PUBLIC_INFERENCE_URL.
+      INFERENCE_INTERNAL_URL: ${INFERENCE_INTERNAL_URL:-http://inference:8000}
     ports:
       - "${DASHBOARD_PORT}:3000"
     depends_on:

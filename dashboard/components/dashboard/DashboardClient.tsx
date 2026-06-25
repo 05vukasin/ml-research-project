@@ -20,7 +20,7 @@ import { useEffect, useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLiveStream } from "@/hooks/useLiveStream";
 import { useDashboard } from "@/context/DashboardContext";
-import { fetchHealth } from "@/lib/api";
+import { fetchHealth, fetchRegistry } from "@/lib/api";
 import { TopNav, type NavTab } from "./TopNav";
 import { AccuracyGauge } from "./AccuracyGauge";
 import { LiveFeed } from "./LiveFeed";
@@ -39,7 +39,8 @@ const HEALTH_POLL_MS = 5_000;
 
 export function DashboardClient() {
   const { aggregates, events } = useLiveStream();
-  const { setActive, activeDataset, datasetMeta, modelMeta } = useDashboard();
+  const { setActive, setRegistry, activeDataset, datasetMeta, modelMeta } =
+    useDashboard();
   const [activeTab, setActiveTab] = useState<NavTab>("dashboard");
   // Bumped after training completes to trigger ModelCards refresh
   const [modelCatalogKey, setModelCatalogKey] = useState(0);
@@ -63,6 +64,25 @@ export function DashboardClient() {
     const id = setInterval(syncHealth, HEALTH_POLL_MS);
     return () => clearInterval(id);
   }, [syncHealth]);
+
+  // Rehydrate the full registry from the browser on mount. SSR runs inside the
+  // dashboard container where the public inference URL is unreachable, so the
+  // server falls back to a fraud-only registry → non-fraud datasets render with
+  // a null datasetMeta (gray). Refetching here from the browser restores the
+  // accent colors on every refresh without needing a training action.
+  useEffect(() => {
+    let cancelled = false;
+    fetchRegistry()
+      .then((reg) => {
+        if (!cancelled) setRegistry(reg);
+      })
+      .catch(() => {
+        // Silently ignore — SSR fallback registry stays in place
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [setRegistry]);
 
   // Resolve in-flight count as events in last 500ms
   const inFlightCount = events.filter((e) => {
@@ -114,19 +134,15 @@ export function DashboardClient() {
                 )}
 
                 {/* Hero row: Gauge (center/largest) + Live Feed (right) */}
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
-                  {/* Left column: Gauge + Pipeline */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-stretch">
+                  {/* Left column: Gauge + Pipeline — both full-width, edges flush */}
                   <div className="flex flex-col gap-6">
-                    {/* Hero gauge — visually dominant */}
-                    <div className="flex justify-center">
-                      <div className="w-full max-w-[340px]">
-                        <AccuracyGauge
-                          accuracy={aggregates.running_accuracy}
-                          totalProcessed={aggregates.total_processed}
-                          dataset={aggregates.dataset || activeDataset}
-                        />
-                      </div>
-                    </div>
+                    {/* Hero gauge — visually dominant, spans the full column width */}
+                    <AccuracyGauge
+                      accuracy={aggregates.running_accuracy}
+                      totalProcessed={aggregates.total_processed}
+                      dataset={aggregates.dataset || activeDataset}
+                    />
 
                     {/* Pipeline flow */}
                     <PipelineFlow
@@ -135,12 +151,19 @@ export function DashboardClient() {
                     />
                   </div>
 
-                  {/* Right column: Live Feed (fixed h-[420px]) + Progress widget */}
-                  <div className="flex flex-col gap-4">
-                    {/* LiveFeed has its own fixed height (h-[420px]) — no min-h wrapper */}
-                    <LiveFeed events={events} />
-                    {/* Progress widget — secondary to hero gauge */}
-                    <ProgressWidget />
+                  {/* Right column. On lg the inner stack is taken out of flow
+                      (absolute inset-0) so this cell contributes ~0 intrinsic height
+                      and stretches to the LEFT column's height instead. That breaks the
+                      feedback loop where new feed rows grew the row: LiveFeed now fills a
+                      fixed box and scrolls internally, and the Progress bottom edge lines
+                      up with the Pipeline bottom edge. On mobile it's normal flow. */}
+                  <div className="lg:relative">
+                    <div className="flex flex-col gap-4 lg:absolute lg:inset-0">
+                      {/* LiveFeed grows to fill; keeps a min height when stacked on mobile */}
+                      <LiveFeed events={events} />
+                      {/* Progress widget — secondary to hero gauge */}
+                      <ProgressWidget />
+                    </div>
                   </div>
                 </div>
 
